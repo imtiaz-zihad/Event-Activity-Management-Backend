@@ -1,10 +1,13 @@
-import express, { Application, NextFunction, Request, Response } from "express";
+import express, { Application, Request, Response } from "express";
 import cors from "cors";
 import globalErrorHandler from "./app/middlewares/globalErrorHandler";
 import notFound from "./app/middlewares/notFound";
 import config from "./config";
+import { routes } from "./app/routes";
+
 
 const app: Application = express();
+
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -12,21 +15,24 @@ app.use(
   })
 );
 
-//parser
+// parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req: Request, res: Response) => {
   res.send({
-    Message: "Event Management Server Running Well.....",
-    enviroment: config.node_env,
+    message: "Event Management Server Running Well.....",
+    environment: config.node_env,
     uptime: process.uptime().toFixed(2) + " sec",
     timeStamp: new Date().toISOString(),
   });
 });
 
-app.use(globalErrorHandler);
+// ✅ REGISTER ROUTES HERE
+app.use("/api/v1", routes);
 
+// ❌ Error handlers ALWAYS LAST
+app.use(globalErrorHandler);
 app.use(notFound);
 
 export default app;

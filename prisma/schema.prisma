@@ -1,0 +1,66 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  HOST
+  ADMIN
+}
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  events    Event[]  @relation("HostedEvents")
+  joined    Event[]  @relation("JoinedEvents")
+  reviews   Review[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+}
+
+
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  description String
+  date        DateTime
+  location    String
+  price       Float
+  maxPeople   Int
+  status      String   @default("OPEN")
+  hostId      String
+  host        User     @relation("HostedEvents", fields: [hostId], references: [id])
+  participants User[]  @relation("JoinedEvents")
+  reviews     Review[]
+  createdAt   DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String
+  userId    String
+  eventId   String
+  user      User     @relation(fields: [userId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  userId        String
+  eventId       String
+  amount        Float
+  status        String
+  transactionId String
+  createdAt     DateTime @default(now())
+}
