@@ -8,59 +8,146 @@ datasource db {
   provider = "postgresql"
 }
 
+
+
+//////////////////////
+// ENUMS
+//////////////////////
+
 enum Role {
   USER
   HOST
   ADMIN
 }
+
+enum EventStatus {
+  OPEN
+  FULL
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+//////////////////////
+// USER & PROFILE
+//////////////////////
+
 model User {
   id        String   @id @default(uuid())
-  name      String
   email     String   @unique
   password  String
   role      Role     @default(USER)
-  events    Event[]  @relation("HostedEvents")
-  joined    Event[]  @relation("JoinedEvents")
-  reviews   Review[]
+  isBlocked Boolean  @default(false)
+
+  profile   Profile?
+  events    Event[]        @relation("HostedEvents")
+  joined    Participant[]
+  reviews   Review[]       @relation("UserReviews")
+  payments  Payment[]
+
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+model Profile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  fullName    String
+  image       String?
+  bio         String?
+  location    String?
+  interests   String[]   // ["Music", "Sports", "Gaming"]
 
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+//////////////////////
+// EVENTS
+//////////////////////
 
 model Event {
-  id          String   @id @default(uuid())
-  title       String
-  category    String
-  description String
-  date        DateTime
-  location    String
-  price       Float
-  maxPeople   Int
-  status      String   @default("OPEN")
-  hostId      String
-  host        User     @relation("HostedEvents", fields: [hostId], references: [id])
-  participants User[]  @relation("JoinedEvents")
-  reviews     Review[]
-  createdAt   DateTime @default(now())
+  id              String       @id @default(uuid())
+  hostId          String
+  title           String
+  category        String       // Concert, Hike, Dinner
+  description     String
+  image           String?
+  location        String
+  dateTime        DateTime
+  minParticipants Int
+  maxParticipants Int
+  joiningFee      Float        @default(0)
+  status          EventStatus  @default(OPEN)
+
+  host            User         @relation("HostedEvents", fields: [hostId], references: [id])
+  participants    Participant[]
+  reviews         Review[]
+  payments        Payment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
+
+//////////////////////
+// EVENT PARTICIPATION
+//////////////////////
+
+model Participant {
+  id        String   @id @default(uuid())
+  userId    String
+  eventId   String
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  joinedAt  DateTime @default(now())
+
+  @@unique([userId, eventId])
+}
+
+//////////////////////
+// REVIEWS & RATINGS
+//////////////////////
 
 model Review {
   id        String   @id @default(uuid())
-  rating    Int
-  comment   String
+  rating    Int      // 1–5
+  comment   String?
+
   userId    String
+  hostId    String
   eventId   String
-  user      User     @relation(fields: [userId], references: [id])
-  event     Event    @relation(fields: [eventId], references: [id])
+
+  user      User    @relation("UserReviews", fields: [userId], references: [id])
+  event     Event   @relation(fields: [eventId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventId])
 }
 
+//////////////////////
+// PAYMENTS
+//////////////////////
+
 model Payment {
-  id            String   @id @default(uuid())
+  id            String        @id @default(uuid())
   userId        String
   eventId       String
   amount        Float
-  status        String
-  transactionId String
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+
+  user          User          @relation(fields: [userId], references: [id])
+  event         Event         @relation(fields: [eventId], references: [id])
+
   createdAt     DateTime @default(now())
 }
